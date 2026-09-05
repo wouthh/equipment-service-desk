@@ -8,6 +8,16 @@ The production image runs as non-root UID/GID 1000. Make supplies the current ho
 
 Up starts the API, proxy, database, and worker; down preserves the development database volume. PostgreSQL 18 mounts at `/var/lib/postgresql` with no host database port.
 
+The local configuration uses `APP_DEBUG=0`. After source/service changes, clear
+the generated Symfony cache before restarting the API/worker:
+
+```sh
+docker compose --env-file .env.local run --rm --no-deps app php bin/console cache:clear --no-warmup
+docker compose --env-file .env.local restart app worker
+```
+
+This changes generated project cache only, not source or database contents.
+
 ## Accounts and tokens
 
 Prefix console operations with `docker compose --env-file .env.local run --rm --no-deps app php bin/console`:
@@ -30,6 +40,11 @@ Data-creating migrations deliberately refuse destructive down operations. Revert
 ## Worker recovery
 
 The worker consumes reports. Inspect bounded counts with `messenger:stats reports failed` and job status through the API. A crash before commit leaves no ready result; a crash after commit can redeliver safely.
+
+The development worker deliberately exits after one hour or its memory limit;
+it has no automatic restart policy. Run `make up` again to start a stopped worker.
+Accepted jobs remain queued meanwhile. Supervision for unattended deployment is
+a separate operational decision, not implied by API readiness.
 
 Three retries wait 1, 2, and 4 seconds. Terminal failures record a generic code; correct the cause and request a new report/key. Do not regenerate terminally failed jobs. Transport payloads retain typed ID/retry metadata, not exception text.
 
