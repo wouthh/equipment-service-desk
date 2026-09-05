@@ -2,7 +2,7 @@
 
 Read [AGENTS.md](AGENTS.md), the [domain invariants](docs/domain.md), and the relevant module before editing. Use only original synthetic examples.
 
-During Phase 10, continue the verified local implementation branch; no remote or publication is authorized. For later authorized delivery, refresh the intended base and use an isolated branch. Continue an existing PR at its verified head, without recreating or rebasing it. Preserve dirty work and nested guidance.
+For authorized delivery, refresh the intended `main` base and use an isolated branch. Continue an existing PR at its verified head, without recreating or rebasing it. Preserve dirty work and nested guidance. Publication, merge, release and settings changes require explicit task authority; source publication does not authorize deployment.
 
 Add regressions and matching documentation. Run `make check`; never weaken a gate or call an unavailable check successful. `make style-fix` is an explicit formatting operation, not validation.
 

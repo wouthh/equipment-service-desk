@@ -2,7 +2,7 @@
 
 Equipment Service Desk is a synthetic PHP/Symfony backend for equipment requests, policy-based triage, technician assignment, and operational reporting.
 
-**Status: local reference implementation.** Original synthetic software; no production deployment, real users, or measured-scale claim. Publication is a separate delivery step.
+**Status: maintained reference implementation.** Original synthetic software for a local demonstration; no production deployment, real users, or measured-scale claim.
 
 The useful part is what happens when requests are retried, assignments conflict, authorization fails, or a worker stops—not just the happy path.
 
