@@ -95,7 +95,7 @@ final class WorkflowTest extends TestCase
             $item->triage($newPolicy->decide(Criticality::Normal, Impact::Stopped, $item->submittedAt()));
             self::fail('Snapshot replacement accepted.');
         } catch (\LogicException) {
-            self::assertSame($snapshot,$item->view()['triage']);
+            self::assertSame($snapshot, $item->view()['triage']);
         }
     }
 }

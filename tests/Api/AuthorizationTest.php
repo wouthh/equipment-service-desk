@@ -31,7 +31,7 @@ final class AuthorizationTest extends DatabaseTest
     {
         $id = $this->insertRequest('assigned');
         $input = match ($action) {
-            'triage' => ['impact' => 'degraded'],'assignment' => ['technicianId' => '10000000-0000-7000-8000-000000000006'],'resolution' => ['summary' => 'Synthetic resolution'],default => ['reason' => 'Synthetic cancellation']
+            'triage' => ['impact' => 'degraded'],'assignment' => ['technicianId' => '10000000-0000-7000-8000-000000000006'],'resolution' => ['summary' => 'Synthetic resolution'],default => ['reason' => 'Synthetic cancellation'],
         };
         $response = $this->call($actor, 'POST', '/api/v1/service-requests/'.$id.'/'.$action, $input, ['Idempotency-Key' => $this->newKey(), 'If-Match' => '"'.$id.':1"']);
         self::assertSame($status, $response->getStatusCode(), (string) $response->getContent());
@@ -69,8 +69,8 @@ final class AuthorizationTest extends DatabaseTest
     public function testExpiredAndRevokedTokens(): void
     {
         $this->admin->executeStatement("UPDATE api_token SET expires_at=now()-interval '1 hour' WHERE principal_id=(SELECT id FROM app_user WHERE handle='requester-a')");
-        self::assertSame(401, $this->call('requester-a','GET','/api/v1/me')->getStatusCode());
+        self::assertSame(401, $this->call('requester-a', 'GET', '/api/v1/me')->getStatusCode());
         $this->admin->executeStatement("UPDATE api_token SET revoked_at=now() WHERE principal_id=(SELECT id FROM app_user WHERE handle='requester-b')");
-        self::assertSame(401,$this->call('requester-b','GET','/api/v1/me')->getStatusCode());
+        self::assertSame(401, $this->call('requester-b', 'GET', '/api/v1/me')->getStatusCode());
     }
 }

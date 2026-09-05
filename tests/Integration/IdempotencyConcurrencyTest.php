@@ -55,7 +55,7 @@ final class IdempotencyConcurrencyTest extends DatabaseTest
                 }
             }
             foreach ($processes as $process) {
-                self::assertSame(0,proc_close($process));
+                self::assertSame(0, proc_close($process));
             }
         }
     }

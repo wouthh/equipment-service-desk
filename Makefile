@@ -26,9 +26,9 @@ token:
 analyse:
 	$(TEST) run --rm test vendor/bin/phpstan analyse --no-progress
 style-check:
-	$(RUN) vendor/bin/php-cs-fixer check --diff
+	$(RUN) vendor/bin/php-cs-fixer check --diff --using-cache=no
 style-fix:
-	$(RUN) vendor/bin/php-cs-fixer fix
+	$(RUN) vendor/bin/php-cs-fixer fix --using-cache=no
 validate:
 	$(RUN) composer validate --strict
 	$(TEST) run --rm test php bin/console lint:container

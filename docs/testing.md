@@ -19,6 +19,10 @@ All data is original and synthetic. PostgreSQL tests use a dedicated ephemeral C
 
 Run init/install first. Stage intended new public files before scanning: ignored config, vendor, and tokens are deliberately not exported. No real provider is used.
 
+The style commands disable the fixer cache so a warm checkout cannot
+skip a source file that a fresh CI checkout would reject. Formatting remains a
+separate explicit operation; no test assertion is removed to satisfy style.
+
 Exact assertions use frozen time and deterministic IDs. Concurrent assignment contenders both hydrate one version before a barrier opens. Concurrent idempotency verifies database blocking before releasing the first transaction; it does not rely on hopeful sleeps.
 
 Worker tests use the actual Doctrine transport and configured retry policy. A pre-commit failpoint proves rollback; repeated delivery after commit proves immutable output and a single completion audit. Migration tests create their own database, seed core data, upgrade, and compare preserved records.

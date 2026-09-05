@@ -51,6 +51,6 @@ final class WorkerRetryTest extends DatabaseTest
         self::assertSame('failed', $this->admin->fetchOne('SELECT status FROM report_job WHERE id=?', [$id]));
         self::assertSame(1, $this->admin->fetchOne("SELECT count(*) FROM messenger_messages WHERE queue_name='failed'"));
         self::assertSame(0, $this->admin->fetchOne("SELECT count(*) FROM messenger_messages WHERE queue_name='reports'"));
-        self::assertNull($this->admin->fetchOne('SELECT csv FROM report_job WHERE id=?',[$id]));
+        self::assertNull($this->admin->fetchOne('SELECT csv FROM report_job WHERE id=?', [$id]));
     }
 }
