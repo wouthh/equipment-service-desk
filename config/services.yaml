@@ -1,0 +1,15 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+  App\:
+    resource: ../src/
+    exclude: ['../src/Kernel.php', '../src/**/Domain/', '../src/**/Message/']
+  Symfony\Component\Clock\ClockInterface: '@clock'
+  App\Shared\Infrastructure\Ids: '@App\Shared\Infrastructure\RandomIds'
+  App\ServiceRequests\Domain\TriagePolicy: '@App\ServiceRequests\Application\TriageV1'
+when@test:
+  services:
+    App\Tests\Support\ExceptionProbe:
+      autowire: true
+      autoconfigure: true

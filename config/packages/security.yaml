@@ -1,0 +1,17 @@
+security:
+  providers:
+    users:
+      entity: {class: App\Access\Domain\Principal, property: id}
+  firewalls:
+    main:
+      lazy: true
+      stateless: true
+      provider: users
+      entry_point: App\Access\Infrastructure\AuthenticationFailure
+      access_token:
+        token_handler: App\Access\Infrastructure\TokenHandler
+        failure_handler: App\Access\Infrastructure\AuthenticationFailure
+        token_extractors: [security.access_token_extractor.header]
+  access_control:
+    - {path: '^/api/', roles: IS_AUTHENTICATED_FULLY}
+    - {path: '^/(health/(live|ready)|openapi\.yaml)$', roles: PUBLIC_ACCESS}

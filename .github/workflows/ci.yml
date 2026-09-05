@@ -1,0 +1,28 @@
+name: Reference backend checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SCAN_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Generate synthetic local configuration and install locked dependencies
+        run: make init install
+      - name: Run the canonical gate
+        run: make check
+      - name: Remove only this runner's disposable test stack
+        if: always()
+        run: docker compose --env-file .env.local -f compose.test.yaml down --remove-orphans

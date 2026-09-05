@@ -1,0 +1,24 @@
+framework:
+  secret: '%env(APP_SECRET)%'
+  router: {utf8: true}
+  validation: {enabled: true}
+  handle_all_throwables: true
+  http_method_override: false
+  php_errors: {log: true}
+  cache:
+    pools:
+      cache.rate_limiter:
+        adapter: cache.adapter.filesystem
+  lock: flock
+  rate_limiter:
+    api:
+      policy: fixed_window
+      limit: 120
+      interval: '1 minute'
+    reports:
+      policy: fixed_window
+      limit: 5
+      interval: '1 hour'
+when@test:
+  framework:
+    test: true
