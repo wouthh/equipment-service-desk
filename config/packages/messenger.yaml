@@ -1,0 +1,15 @@
+framework:
+  messenger:
+    failure_transport: failed
+    transports:
+      reports:
+        dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+        serializer: App\Reporting\Infrastructure\ReportSerializer
+        options: {queue_name: reports, redeliver_timeout: 120, use_notify: false}
+        retry_strategy: {max_retries: 3, delay: 1000, multiplier: 2, max_delay: 4000, jitter: 0}
+      failed:
+        dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+        serializer: App\Reporting\Infrastructure\ReportSerializer
+        options: {queue_name: failed, use_notify: false}
+    routing:
+      App\Reporting\Message\GenerateReport: reports

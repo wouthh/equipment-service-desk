@@ -37,9 +37,14 @@ initially; recheck when entering a changed subtree.
 ## Validation and privacy
 
 The authoritative runtime is Docker with PHP 8.4 and PostgreSQL 18, not host PHP
-or SQLite. Canonical commands are being established during the initial build;
-until exercised, they are unverified. Maintain actual outcomes in the local
-handoff, not invented test counts here. The intended full gate is `make check`.
+or SQLite. `make init install db-up migrate fixtures up` establishes the local
+demo; initialization preserves existing configuration and fixtures never purge.
+`make test-unit test-integration test-api` uses the disposable test database.
+`make analyse style-check validate docs-check audit scan` runs quality gates.
+`make walkthrough docker-build smoke` verifies real loopback HTTP and the
+production image. `make check` is the complete non-formatting acceptance gate;
+`make style-fix` is an explicit edit. Maintain actual outcomes in the local
+handoff, not invented or permanently fixed test counts here.
 Never weaken a gate or replace a regression with a placeholder to get green.
 
 Use only original synthetic code/data. No real providers, employer/client

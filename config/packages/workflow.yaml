@@ -1,0 +1,14 @@
+framework:
+  workflows:
+    service_request:
+      type: state_machine
+      supports: [App\ServiceRequests\Domain\ServiceRequest]
+      marking_store: {type: method, property: state}
+      initial_marking: submitted
+      places: [submitted, triaged, assigned, resolved, cancelled]
+      transitions:
+        triage: {from: submitted, to: triaged}
+        assign: {from: triaged, to: assigned}
+        reassign: {from: assigned, to: assigned}
+        resolve: {from: assigned, to: resolved}
+        cancel: {from: [submitted, triaged, assigned], to: cancelled}

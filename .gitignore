@@ -5,4 +5,6 @@
 /.phpunit.cache/
 /.php-cs-fixer.cache
 /coverage/
+__pycache__/
+/config/reference.php
 /.local/

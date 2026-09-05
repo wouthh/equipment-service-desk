@@ -1,0 +1,50 @@
+name: equipment-service-desk-test
+x-test-runtime: &test-runtime
+  APP_ENV: test
+  APP_DEBUG: "1"
+  APP_SECRET: ${APP_SECRET:?run make init}
+  DATABASE_URL: postgresql://desk_runtime:${RUNTIME_PASSWORD}@db:5432/desk_test
+  TEST_MIGRATION_URL: postgresql://desk_migrator:${MIGRATION_PASSWORD}@db:5432/desk_test
+  MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=false
+  COMPOSER_HOME: /tmp/esd-composer
+services:
+  db:
+    image: postgres:18.6-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+    environment:
+      POSTGRES_DB: desk_test
+      POSTGRES_USER: desk_migrator
+      POSTGRES_PASSWORD: ${MIGRATION_PASSWORD:?run make init}
+      DESK_RUNTIME_PASSWORD: ${RUNTIME_PASSWORD:?run make init}
+    tmpfs: [/var/lib/postgresql]
+    volumes: ["./docker/init-db.sh:/docker-entrypoint-initdb.d/10-runtime.sh:ro,z"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U desk_migrator -d desk_test"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+  test:
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    build: {context: ., dockerfile: docker/Dockerfile, target: development}
+    environment: *test-runtime
+    volumes: [".:/app:z"]
+    depends_on:
+      db: {condition: service_healthy}
+  app:
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    profiles: [walkthrough]
+    build: {context: ., dockerfile: docker/Dockerfile, target: development}
+    environment:
+      <<: *test-runtime
+      TEST_MIGRATION_URL: ""
+    volumes: [".:/app:z"]
+    depends_on:
+      db: {condition: service_healthy}
+  worker:
+    extends: {service: app}
+    command: ["php", "bin/console", "messenger:consume", "reports", "--time-limit=120", "--memory-limit=128M"]
+  web:
+    profiles: [walkthrough]
+    image: nginx:stable-alpine@sha256:dc5069ad14f19660b141b21236140b91656bf89bbc3e2417c70ae650cd66104c
+    ports: ["127.0.0.1::8080"]
+    volumes: ["./docker/nginx.conf:/etc/nginx/nginx.conf:ro,z"]
+    depends_on: [app]

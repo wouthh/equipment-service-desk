@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""Exercise a disposable, loopback-only synthetic stack; never use the development DB."""
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import time
+import urllib.error
+import urllib.request
+import uuid
+
+root = Path(__file__).resolve().parent.parent
+project = "esd-walkthrough-" + uuid.uuid4().hex[:12]
+compose = ["docker", "compose", "--env-file", ".env.local", "-f", "compose.test.yaml", "-p", project, "--profile", "walkthrough"]
+created_tokens = []
+
+
+def run(*args):
+    result = subprocess.run(compose + list(args), cwd=root, text=True, capture_output=True, timeout=180)
+    if result.returncode:
+        raise RuntimeError("Disposable walkthrough command failed: " + args[0])
+    return result.stdout
+
+
+def token(actor):
+    output = run("run", "--rm", "test", "php", "bin/console", "app:token:issue", actor)
+    match = re.search(r"Protected curl configuration: (var/local/tokens/[0-9a-f-]{36}\.curl)", output)
+    if not match:
+        raise RuntimeError("Protected token handoff missing.")
+    path = root / match[1]
+    if path.is_symlink() or path.stat().st_uid != os.getuid() or path.stat().st_mode & 0o077:
+        raise RuntimeError("Token file permissions invalid.")
+    created_tokens.append(path)
+    data = path.read_text()
+    value = re.fullmatch(r'header = "Authorization: Bearer ([0-9a-f]{64})"\n', data)
+    if not value:
+        raise RuntimeError("Token handoff format invalid.")
+    return value[1]
+
+
+try:
+    run("up", "-d", "--wait", "db")
+    # The migration DSN is passed inside the container, not interpolated into argv.
+    run("run", "--rm", "test", "sh", "-c", 'DATABASE_URL="$TEST_MIGRATION_URL" php bin/console doctrine:migrations:migrate --no-interaction')
+    run("run", "--rm", "test", "php", "bin/console", "app:demo:seed")
+    tokens = {actor: token(actor) for actor in ["requester-a", "requester-b", "coordinator-a", "technician-a"]}
+    run("up", "-d", "--build", "app", "web", "worker")
+    address = run("port", "web", "8080").strip()
+    if not re.fullmatch(r"127\.0\.0\.1:[0-9]+", address):
+        raise RuntimeError("Walkthrough port is not loopback.")
+    origin = "http://" + address
+
+    def call(actor, method, path, body=None, etag=None, expected=200, key=None):
+        headers = {"Content-Type": "application/json"}
+        if actor:
+            headers["Authorization"] = "Bearer " + tokens[actor]
+        if method == "POST":
+            headers["Idempotency-Key"] = key or str(uuid.uuid4())
+        if etag:
+            headers["If-Match"] = etag
+        request = urllib.request.Request(origin + path, data=None if body is None else json.dumps(body).encode(), headers=headers, method=method)
+        try:
+            response = urllib.request.urlopen(request, timeout=10)
+        except urllib.error.HTTPError as error:
+            response = error
+        with response:
+            content = response.read()
+            if response.status != expected:
+                raise RuntimeError(f"Synthetic {method} operation returned {response.status}, expected {expected}.")
+            return content, response.headers
+
+    deadline = time.monotonic() + 30
+    while True:
+        try:
+            call(None, "GET", "/health/ready")
+            break
+        except (RuntimeError, urllib.error.URLError):
+            if time.monotonic() > deadline:
+                raise
+            time.sleep(0.5)
+    key = str(uuid.uuid4())
+    payload = {"equipmentId": "20000000-0000-7000-8000-000000000002", "title": "Synthetic walkthrough", "description": "Original synthetic service request", "reportedImpact": "stopped"}
+    created, headers = call("requester-a", "POST", "/api/v1/service-requests", payload, expected=201, key=key)
+    replay, _ = call("requester-a", "POST", "/api/v1/service-requests", payload, expected=201, key=key)
+    if replay != created:
+        raise RuntimeError("Idempotent replay changed.")
+    path = "/api/v1/service-requests/" + json.loads(created)["id"]
+    call("requester-b", "GET", path, expected=404)
+    _, headers = call("coordinator-a", "POST", path + "/triage", {"impact": "stopped"}, headers["ETag"])
+    old_etag = headers["ETag"]
+    _, headers = call("coordinator-a", "POST", path + "/assignment", {"technicianId": "10000000-0000-7000-8000-000000000005"}, old_etag)
+    call("coordinator-a", "POST", path + "/assignment", {"technicianId": "10000000-0000-7000-8000-000000000006"}, old_etag, expected=412)
+    call("technician-a", "POST", path + "/resolution", {"summary": "Synthetic verified repair"}, headers["ETag"])
+    from datetime import datetime, timedelta, timezone
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    report, _ = call("coordinator-a", "POST", "/api/v1/reports", {"from": today.isoformat(), "to": (today + timedelta(days=1)).isoformat()}, expected=202)
+    report_path = "/api/v1/reports/" + json.loads(report)["id"]
+    deadline = time.monotonic() + 30
+    while True:
+        time.sleep(0.4)
+        status, _ = call("coordinator-a", "GET", report_path)
+        state = json.loads(status)["status"]
+        if state == "ready":
+            break
+        if state == "failed" or time.monotonic() > deadline:
+            raise RuntimeError("Report did not become ready.")
+    csv, _ = call("coordinator-a", "GET", report_path + "/download")
+    if b"Synthetic verified repair" in csv or b"Original synthetic" in csv or json.loads(created)["id"].encode() not in csv:
+        raise RuntimeError("CSV evidence boundary failed.")
+    print("PASS: real loopback HTTP workflow, replay, cross-user denial, stale assignment, worker and CSV.")
+finally:
+    try:
+        run("down", "--remove-orphans")
+    finally:
+        for path in created_tokens:
+            if path.is_file() and not path.is_symlink():
+                path.unlink()

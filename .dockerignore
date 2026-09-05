@@ -1,0 +1,9 @@
+/.git
+/config/reference.php
+/.env.local
+/.env.*.local
+/vendor
+/var
+/.local
+/.phpunit.cache
+/.php-cs-fixer.cache

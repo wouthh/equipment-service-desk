@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+# This process only connects to the dedicated, ephemeral desk_test database.
+case "${TEST_MIGRATION_URL:-}" in */desk_test) ;; *) echo "Disposable database required." >&2; exit 2;; esac
+DATABASE_URL="$TEST_MIGRATION_URL" php bin/console doctrine:migrations:migrate --no-interaction
+exec vendor/bin/phpunit "$@"
